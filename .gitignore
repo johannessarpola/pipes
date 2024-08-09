@@ -1,0 +1,11 @@
+go.mod
+!/**/
+!*.*
+.data
+**/*.yaml
+**/*.json
+!**/*_test.json
+**/*.html
+.idea
+.tmp
+debug.log
