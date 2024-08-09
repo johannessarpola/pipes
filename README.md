@@ -1,3 +1,3 @@
-# lutakkols
+# pipes
 
-CLI based on www.jelmu.net, it has a terminal UI to view events and their details. 
+library with general purpose tools to work with golang `chan`nels
