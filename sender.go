@@ -6,7 +6,7 @@ import (
 )
 
 // SendOrDone tries to send a element into chan or cancels if context is done
-func SendOrDone[T any](ele T, dst chan T, ctx context.Context) {
+func SendOrDone[T any](ctx context.Context, ele T, dst chan T) {
 	select {
 	case <-ctx.Done():
 		// ctx canceled before sent successfully

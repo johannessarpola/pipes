@@ -12,7 +12,7 @@ func TestSendOrDone(t *testing.T) {
 	ch := make(chan int)
 	n := time.Now()
 	// This should be canceled with context timeout since there is no consumer
-	SendOrDone(1, ch, c)
+	SendOrDone(c, 1, ch)
 
 	// It should be over in 1 Millisecond
 	if time.Since(n) > time.Millisecond*100 {
@@ -26,7 +26,7 @@ func TestSendOrDone(t *testing.T) {
 	// This sending should succedd as context lifetime is 1 second
 	go func() {
 		defer close(ch)
-		SendOrDone(1, ch, c2)
+		SendOrDone(c2, 1, ch)
 	}()
 
 	for e := range ch {
