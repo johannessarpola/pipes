@@ -18,7 +18,7 @@ func testThrottleChannel(t *testing.T) {
 	}(ch)
 
 	interval := time.Microsecond * 100
-	rl := ThrottleChannel(ch, interval, context.TODO())
+	rl := ThrottleChannel(context.TODO(), ch, interval)
 
 	cont := true
 	cntr := 0

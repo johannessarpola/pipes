@@ -6,7 +6,7 @@ import (
 )
 
 // ThrottleChannel  throttles the input channel with interval to the output channel
-func ThrottleChannel[T any](in <-chan T, interval time.Duration, ctx context.Context) chan T {
+func ThrottleChannel[T any](ctx context.Context, in <-chan T, interval time.Duration) chan T {
 	out := make(chan T)
 	go func() {
 		defer close(out)
