@@ -8,8 +8,8 @@ import (
 )
 
 // Pour consumes a channel, collects them into array and calls the sink func with it, respecting context cancellation
-func Pour[T any](in <-chan T, sink func([]T) error, ctx context.Context, initial ...T) error {
-	collect, err := Collect(in, ctx, initial...)
+func Pour[T any](ctx context.Context, in <-chan T, sink func([]T) error, initial ...T) error {
+	collect, err := Collect(ctx, in, initial...)
 	if err != nil {
 		return err
 	}
@@ -17,14 +17,14 @@ func Pour[T any](in <-chan T, sink func([]T) error, ctx context.Context, initial
 }
 
 // Map transforms elements in channel to another type
-func Map[T any, O any](in <-chan T, fn func(T) (O, error), context context.Context) chan Result[O] {
+func Map[T any, O any](ctx context.Context, in <-chan T, fn func(T) (O, error)) chan Result[O] {
 	out := make(chan Result[O])
 	go func() {
 		defer close(out)
 		for {
 			select {
-			case <-context.Done():
-				out <- Result[O]{Err: context.Err()}
+			case <-ctx.Done():
+				out <- Result[O]{Err: ctx.Err()}
 				return
 			case value, ok := <-in:
 				if !ok {
@@ -39,7 +39,7 @@ func Map[T any, O any](in <-chan T, fn func(T) (O, error), context context.Conte
 					mappedValue, err := fn(value)
 					select {
 					case out <- Result[O]{Val: mappedValue, Err: err}:
-					case <-context.Done():
+					case <-ctx.Done():
 						return
 					}
 				}()
@@ -50,13 +50,13 @@ func Map[T any, O any](in <-chan T, fn func(T) (O, error), context context.Conte
 }
 
 // Materialize copies the pointer values into another channel as a concrete type, respecting context cancellation
-func Materialize[T any](in <-chan *T, context context.Context) chan T {
+func Materialize[T any](ctx context.Context, in <-chan *T) chan T {
 	out := make(chan T)
 	go func(in <-chan *T) {
 		defer close(out)
 		for {
 			select {
-			case <-context.Done():
+			case <-ctx.Done():
 				return
 			case value, ok := <-in:
 				if !ok {
@@ -70,7 +70,7 @@ func Materialize[T any](in <-chan *T, context context.Context) chan T {
 }
 
 // Collect reads from the input channel and collects elements into a slice, respecting context cancellation
-func Collect[T any](in <-chan T, ctx context.Context, initial ...T) ([]T, error) {
+func Collect[T any](ctx context.Context, in <-chan T, initial ...T) ([]T, error) {
 	result := initial
 	for {
 		select {
@@ -142,7 +142,7 @@ func FanIn[T any](ctx context.Context, chans ...chan T) chan T {
 }
 
 // ParMap processes each input channel into single output channel, second chanel for errors if such occur with the process
-func ParMap[T any, O any](process func(T) (O, error), context context.Context, channels ...chan T) (chan O, chan error) {
+func ParMap[T any, O any](ctx context.Context, process func(T) (O, error), channels ...chan T) (chan O, chan error) {
 	out := make(chan O)
 	errs := make(chan error, len(channels))
 	wg := &sync.WaitGroup{}
@@ -154,8 +154,8 @@ func ParMap[T any, O any](process func(T) (O, error), context context.Context, c
 			defer wg.Done()
 			for {
 				select {
-				case <-context.Done():
-					errs <- context.Err()
+				case <-ctx.Done():
+					errs <- ctx.Err()
 					return
 				case v, ok := <-ch:
 					if !ok {
@@ -187,8 +187,8 @@ func ParMap[T any, O any](process func(T) (O, error), context context.Context, c
 
 // RoundRobinFanOut fans a channel out into `outChannelCounts` - number of output channels in round robin manner
 func RoundRobinFanOut[T any](
-	in <-chan T,
 	ctx context.Context,
+	in <-chan T,
 	outChannelCounts int,
 ) []chan T {
 	ocl := make([]chan T, outChannelCounts)
@@ -227,7 +227,7 @@ func RoundRobinFanOut[T any](
 }
 
 // FanOut fans a input channel out into two channels, respecting context cancellation
-func FanOut[T any](in <-chan T, ctx context.Context) (chan T, chan T) {
+func FanOut[T any](ctx context.Context, in <-chan T) (chan T, chan T) {
 	o1 := make(chan T)
 	o2 := make(chan T)
 	go func() {
@@ -276,13 +276,13 @@ func FanOut[T any](in <-chan T, ctx context.Context) (chan T, chan T) {
 }
 
 // FilterError filters errored Results from channel and calls onError for each, respecting context cancellation
-func FilterError[T any](resChan <-chan Result[T], onError func(err error), context context.Context) chan T {
+func FilterError[T any](ctx context.Context, resChan <-chan Result[T], onError func(err error)) chan T {
 	out := make(chan T)
 	go func(onError func(err error)) {
 		defer close(out)
 		for {
 			select {
-			case <-context.Done():
+			case <-ctx.Done():
 				return
 			case res, ok := <-resChan:
 				if !ok {

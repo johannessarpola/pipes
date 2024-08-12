@@ -53,12 +53,12 @@ func TestPour(t *testing.T) {
 
 	cntr := 0
 
-	_ = Pour(ch, func(ints []int) error {
+	_ = Pour(context.TODO(), ch, func(ints []int) error {
 		for _, i := range ints {
 			cntr += i
 		}
 		return nil
-	}, context.Background())
+	})
 
 	if cntr != l {
 		t.Errorf("got %d, want %d", cntr, l)
@@ -74,12 +74,12 @@ func TestPour(t *testing.T) {
 		close(ch)
 	}()
 
-	_ = Pour(ch, func(ints []int) error {
+	_ = Pour(context.TODO(), ch, func(ints []int) error {
 		for _, i := range ints {
 			cntr += i
 		}
 		return nil
-	}, context.TODO())
+	})
 }
 
 type element struct {
@@ -101,7 +101,7 @@ func TestMaterialize(t *testing.T) {
 	}()
 	wg.Wait()
 
-	mat := Materialize(ch, context.TODO())
+	mat := Materialize(context.TODO(), ch)
 
 	received := <-mat
 	ptrele.Value = 22
@@ -143,7 +143,7 @@ func TestParMap(t *testing.T) {
 		return fmt.Sprintf("%d", factored), nil
 	}
 
-	out, _ := ParMap(process, context.TODO(), cs...)
+	out, _ := ParMap(context.TODO(), process, cs...)
 	var rs []string
 	for s := range out {
 		rs = append(rs, s)
@@ -171,7 +171,7 @@ func TestRoundRobinFanOut(t *testing.T) {
 	}(ch)
 
 	count := 4
-	chans := RoundRobinFanOut(ch, context.TODO(), count)
+	chans := RoundRobinFanOut(context.TODO(), ch, count)
 
 	wg := &sync.WaitGroup{}
 	cl := 0
@@ -208,10 +208,10 @@ func TestFanOut(t *testing.T) {
 		close(ch)
 	}()
 
-	c1, c2 := FanOut(ch, context.TODO())
+	c1, c2 := FanOut(context.TODO(), ch)
 
-	col1, _ := Collect(c1, context.TODO())
-	col2, _ := Collect(c2, context.TODO())
+	col1, _ := Collect(context.TODO(), c1)
+	col2, _ := Collect(context.TODO(), c2)
 
 	if len(col1) != len(col2) {
 		t.Errorf("got %d, want %d", len(col1), len(col2))
@@ -267,7 +267,7 @@ func TestCollect(t *testing.T) {
 	}
 	close(ch)
 
-	col, _ := Collect(ch, context.TODO())
+	col, _ := Collect(context.TODO(), ch)
 
 	if len(col) != l {
 		t.Errorf("got %d, want %d", len(col), l)
@@ -298,11 +298,11 @@ func TestFilterError(t *testing.T) {
 	}()
 
 	calls := 0
-	f := FilterError(ch, func(err error) {
+	f := FilterError(context.TODO(), ch, func(err error) {
 		calls += 1
-	}, context.TODO())
+	})
 
-	c, _ := Collect(f, context.TODO())
+	c, _ := Collect(context.TODO(), f)
 	if len(c) != l {
 		t.Errorf("got %d, want %d", len(c), l)
 	}
@@ -326,9 +326,9 @@ func TestMap(t *testing.T) {
 		defer close(ch)
 	}()
 
-	mapped := Map(ch, func(n int) (string, error) {
+	mapped := Map(context.TODO(), ch, func(n int) (string, error) {
 		return fmt.Sprintf("nbr - %d", n), nil
-	}, context.TODO())
+	})
 
 	var vals []string
 	var errs []error
