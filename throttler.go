@@ -20,7 +20,7 @@ func ThrottleChannel[T any](ctx context.Context, in <-chan T, interval time.Dura
 				if !ok {
 					return
 				}
-				out <- v
+				SendOrDone(ctx, v, out)
 			}
 		}
 	}()
