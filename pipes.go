@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"sync"
+
+	"github.com/johannessarpola/gollections/result"
 )
 
 // Pour consumes a channel, collects them into array and calls the sink func with it, respecting context cancellation
@@ -17,14 +19,14 @@ func Pour[T any](ctx context.Context, in <-chan T, sink func([]T) error, initial
 }
 
 // Map transforms elements in channel to another type
-func Map[T any, O any](ctx context.Context, in <-chan T, fn func(T) (O, error)) chan Result[O] {
-	out := make(chan Result[O])
+func Map[T any, O any](ctx context.Context, in <-chan T, fn func(T) (O, error)) chan result.Result[O] {
+	out := make(chan result.Result[O])
 	go func() {
 		defer close(out)
 		for {
 			select {
 			case <-ctx.Done():
-				out <- Result[O]{Err: ctx.Err()}
+				out <- result.NewErr[O](ctx.Err())
 				return
 			case value, ok := <-in:
 				if !ok {
@@ -33,12 +35,12 @@ func Map[T any, O any](ctx context.Context, in <-chan T, fn func(T) (O, error)) 
 				func() {
 					defer func() {
 						if r := recover(); r != nil {
-							out <- Result[O]{Err: fmt.Errorf("panic in transformation: %v", r)}
+							out <- result.NewErr[O](fmt.Errorf("panic in transformation: %v", r))
 						}
 					}()
 					mappedValue, err := fn(value)
 					select {
-					case out <- Result[O]{Val: mappedValue, Err: err}:
+					case out <- result.New(mappedValue, err):
 					case <-ctx.Done():
 						return
 					}
@@ -276,7 +278,7 @@ func FanOut[T any](ctx context.Context, in <-chan T) (chan T, chan T) {
 }
 
 // FilterError filters errored Results from channel and calls onError for each, respecting context cancellation
-func FilterError[T any](ctx context.Context, resChan <-chan Result[T], onError func(err error)) chan T {
+func FilterError[T any](ctx context.Context, resChan <-chan ValueOrError[T], onError func(err error)) chan T {
 	out := make(chan T)
 	go func(onError func(err error)) {
 		defer close(out)
@@ -288,10 +290,10 @@ func FilterError[T any](ctx context.Context, resChan <-chan Result[T], onError f
 				if !ok {
 					return
 				}
-				if res.Err != nil {
-					onError(res.Err)
+				if res.Err() != nil {
+					onError(res.Err())
 				} else {
-					out <- res.Val
+					out <- res.Value()
 				}
 			}
 		}

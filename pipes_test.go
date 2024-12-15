@@ -10,6 +10,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/johannessarpola/gollections/result"
 )
 
 func TestFilter(t *testing.T) {
@@ -277,23 +279,16 @@ func TestCollect(t *testing.T) {
 func TestFilterError(t *testing.T) {
 	l := 10
 	errs := 2
-	ch := make(chan Result[int])
+	ch := make(chan ValueOrError[int])
 
 	go func() {
-		ch <- Result[int]{
-			Err: errors.New("error 1"),
-		}
+		ch <- result.NewErr[int](errors.New("error 1"))
 
 		for i := 0; i < l; i++ {
-			ch <- Result[int]{
-				Val: 1,
-				Err: nil,
-			}
+			ch <- result.NewOk(1)
 		}
 
-		ch <- Result[int]{
-			Err: errors.New("error 2"),
-		}
+		ch <- result.NewErr[int](errors.New("error 2"))
 		defer close(ch)
 	}()
 
@@ -333,9 +328,9 @@ func TestMap(t *testing.T) {
 	var vals []string
 	var errs []error
 	for s := range mapped {
-		vals = append(vals, s.Val)
-		if s.Err != nil {
-			errs = append(errs, s.Err)
+		vals = append(vals, s.Value())
+		if s.Err() != nil {
+			errs = append(errs, s.Err())
 		}
 	}
 
